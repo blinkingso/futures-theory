@@ -1,0 +1,10 @@
+[package]
+name = "futures-theory"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["futures-io", "futures-core", "futures-channel"]
+
+[dependencies]
+regex = "1.6.0"
