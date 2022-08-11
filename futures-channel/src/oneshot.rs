@@ -126,5 +126,55 @@ impl<T> Inner<T> {
     }
 }
 
+impl<T> Sender<T> {
+    pub fn send(self, t: T) -> Result<(), T> {
+        self.inner.send(t)
+    }
+
+    pub fn poll_canceled(&mut self, ctx: &mut Context<'_>) -> Poll<()> {
+        self.inner.poll_canceled(ctx)
+    }
+
+    pub fn cancellation(&mut self) -> Cancellation<'_, T> {
+        Cancellation { inner: self }
+    }
+
+    pub fn is_canceled(&self) -> bool {
+        self.inner.is_canceled()
+    }
+
+    pub fn is_connected_to(&self, receiver: &Receiver<T>) -> bool {
+        Arc::ptr_eq(&self.inner, &receiver.inner)
+    }
+}
+
+impl<T> Drop for Sender<T> {
+    fn drop(&mut self) {
+        self.inner.drop_tx()
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Sender<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Sender")
+            .field("complete", &self.inner.complete)
+            .finish()
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Canceled;
+
+
+#[derive(Debug)]
+pub struct Cancellation<'a, T> {
+    inner: &'a mut Sender<T>,
+}
+
+impl<T> Future for Cancellation<'_, T> {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        self.inner.poll_canceled(cx)
+    }
+}
